@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -60,11 +61,41 @@ func (app *config) createMenuItems(window fyne.Window) {
 
 	saveMenu := fyne.NewMenuItem("Save", func() {})
 
-	saveAs := fyne.NewMenuItem("Save as", func() {})
+	app.saveMenuItem = saveMenu
+	app.saveMenuItem.Disabled = true
+
+	saveAs := fyne.NewMenuItem("Save as", app.saveAsFunc(window))
 
 	fileMenu := fyne.NewMenu("File", openMenu, saveMenu, saveAs)
 
 	menu := fyne.NewMainMenu(fileMenu)
 
 	window.SetMainMenu(menu)
+}
+
+func (app *config) saveAsFunc(window fyne.Window) func() {
+	return func() {
+		saveDialog := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
+			defer uc.Close()
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+
+			// if the user cancel
+			if uc == nil {
+				return
+			}
+
+			// save
+			uc.Write([]byte(app.editWidget.Text))
+			app.currentFile = uc.URI()
+
+			window.SetTitle(window.Title() + " - " + uc.URI().Name())
+
+			app.saveMenuItem.Disabled = false
+		}, window)
+
+		saveDialog.Show()
+	}
 }
