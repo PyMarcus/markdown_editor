@@ -1,6 +1,8 @@
 package main
 
 import (
+	"io/ioutil"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -57,7 +59,7 @@ func (app *config) makeUI() (*widget.Entry, *widget.RichText) {
 }
 
 func (app *config) createMenuItems(window fyne.Window) {
-	openMenu := fyne.NewMenuItem("Open", func() {})
+	openMenu := fyne.NewMenuItem("Open", app.openFunc(window))
 
 	saveMenu := fyne.NewMenuItem("Save", func() {})
 
@@ -71,6 +73,37 @@ func (app *config) createMenuItems(window fyne.Window) {
 	menu := fyne.NewMainMenu(fileMenu)
 
 	window.SetMainMenu(menu)
+}
+
+func (app *config) openFunc(window fyne.Window) func() {
+	return func() {
+		openDialog := dialog.NewFileOpen(func(read fyne.URIReadCloser, err error) {
+			defer read.Close()
+
+			if err != nil {
+				dialog.ShowError(err, window)
+			}
+
+			if read == nil {
+				return
+			}
+
+			data, err := ioutil.ReadAll(read)
+
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+
+			app.editWidget.SetText(string(data))
+
+			app.currentFile = read.URI()
+			window.SetTitle(window.Title() + " - " + read.URI().Name())
+			app.saveMenuItem.Disabled = false
+		}, window)
+
+		openDialog.Show()
+	}
 }
 
 func (app *config) saveAsFunc(window fyne.Window) func() {
