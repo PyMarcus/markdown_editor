@@ -2,11 +2,14 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -61,7 +64,7 @@ func (app *config) makeUI() (*widget.Entry, *widget.RichText) {
 func (app *config) createMenuItems(window fyne.Window) {
 	openMenu := fyne.NewMenuItem("Open", app.openFunc(window))
 
-	saveMenu := fyne.NewMenuItem("Save", func() {})
+	saveMenu := fyne.NewMenuItem("Save", app.saveFunc(window))
 
 	app.saveMenuItem = saveMenu
 	app.saveMenuItem.Disabled = true
@@ -75,18 +78,23 @@ func (app *config) createMenuItems(window fyne.Window) {
 	window.SetMainMenu(menu)
 }
 
+// filter:
+var filter = storage.NewExtensionFileFilter([]string{".md", ".MD"})
+
 func (app *config) openFunc(window fyne.Window) func() {
 	return func() {
 		openDialog := dialog.NewFileOpen(func(read fyne.URIReadCloser, err error) {
-			defer read.Close()
 
 			if err != nil {
 				dialog.ShowError(err, window)
+				return
 			}
 
 			if read == nil {
 				return
 			}
+
+			defer read.Close()
 
 			data, err := ioutil.ReadAll(read)
 
@@ -95,21 +103,44 @@ func (app *config) openFunc(window fyne.Window) func() {
 				return
 			}
 
-			app.editWidget.SetText(string(data))
+			if read != nil {
+				app.editWidget.SetText(string(data))
 
-			app.currentFile = read.URI()
-			window.SetTitle(window.Title() + " - " + read.URI().Name())
-			app.saveMenuItem.Disabled = false
+				app.currentFile = read.URI()
+				window.SetTitle(window.Title() + " - " + read.URI().Name())
+				app.saveMenuItem.Disabled = false
+			}
+			return
 		}, window)
 
+		openDialog.SetFilter(filter)
 		openDialog.Show()
+	}
+}
+
+func (app *config) saveFunc(window fyne.Window) func() {
+	return func() {
+		if app.currentFile != nil {
+			write, err := storage.Writer(app.currentFile)
+
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+
+			write.Write([]byte(app.editWidget.Text))
+
+			defer write.Close()
+		}
 	}
 }
 
 func (app *config) saveAsFunc(window fyne.Window) func() {
 	return func() {
 		saveDialog := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
-			defer uc.Close()
+
+			log.Println("User cancel", uc)
+
 			if err != nil {
 				dialog.ShowError(err, window)
 				return
@@ -120,15 +151,29 @@ func (app *config) saveAsFunc(window fyne.Window) func() {
 				return
 			}
 
+			defer uc.Close()
+
 			// save
-			uc.Write([]byte(app.editWidget.Text))
-			app.currentFile = uc.URI()
+			if uc != nil {
 
-			window.SetTitle(window.Title() + " - " + uc.URI().Name())
+				if !strings.HasSuffix(uc.URI().String(), ".md") {
+					dialog.ShowInformation("Ops!",
+						"Invalid format. Please, name your file with .md extension",
+						window)
+				}
 
-			app.saveMenuItem.Disabled = false
+				uc.Write([]byte(app.editWidget.Text))
+				app.currentFile = uc.URI()
+
+				window.SetTitle(window.Title() + " - " + uc.URI().Name())
+
+				app.saveMenuItem.Disabled = false
+			}
+			return
 		}, window)
 
+		saveDialog.SetFileName("untitled.md")
+		saveDialog.SetFilter(filter)
 		saveDialog.Show()
 	}
 }
