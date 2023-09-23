@@ -23,11 +23,13 @@ func main() {
 	w := createWindow(a, "Markdown Editor")
 	// get user interface
 	edit, preview := cfg.makeUI()
+	// create menu items
+	cfg.createMenuItems(w)
 	// set the content of the window
 	w.SetContent(container.NewHSplit(edit, preview))
 	// window size
 	w.SetFixedSize(true)
-	w.Resize(fyne.Size{Width: 480, Height: 600})
+	w.Resize(fyne.Size{Width: 800, Height: 500})
 	// open on the center of screen
 	w.CenterOnScreen()
 	// show window and run app
@@ -51,4 +53,18 @@ func (app *config) makeUI() (*widget.Entry, *widget.RichText) {
 	// listener
 	edit.OnChanged = preview.ParseMarkdown
 	return edit, preview
+}
+
+func (app *config) createMenuItems(window fyne.Window) {
+	openMenu := fyne.NewMenuItem("Open", func() {})
+
+	saveMenu := fyne.NewMenuItem("Save", func() {})
+
+	saveAs := fyne.NewMenuItem("Save as", func() {})
+
+	fileMenu := fyne.NewMenu("File", openMenu, saveMenu, saveAs)
+
+	menu := fyne.NewMainMenu(fileMenu)
+
+	window.SetMainMenu(menu)
 }
