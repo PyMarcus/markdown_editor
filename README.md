@@ -1,4 +1,8 @@
 # markdown_editor
+
+![icon](https://github.com/PyMarcus/markdown_editor/assets/88283829/fe880d77-9b28-44ee-b344-c16ada69fc71)
+
+
 A simple and performatic markdown editor written in go.
 
 # ▶️ How to use:
