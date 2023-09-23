@@ -13,6 +13,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// C:\Users\marcus\go\bin\fyne.exe package -appVersion 1.0.0 -name MarkdownEditor -release -icon icon.png -appID com.example.markdowneditor
+
 type config struct {
 	editWidget    *widget.Entry
 	previewWidget *widget.RichText
